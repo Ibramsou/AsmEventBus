@@ -7,6 +7,5 @@ public class Main {
         bus.register(new EventHandler("Hi ! :)"));
         MessageEvent event = new MessageEvent("Example");
         bus.post(event);
-        bus.post(event);
     }
 }

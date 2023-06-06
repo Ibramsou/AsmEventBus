@@ -1,51 +1,48 @@
 package fr.bramsou.event;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
 
 public class EventBus {
 
     private final EventPostGenerator postGenerator = new EventPostGenerator();
-    private final Map<Class<?>, List<EventPost>> executorMap;
-    private final Map<Object, List<EventPost>> handlerPosts = new HashMap<>();
-
-    public EventBus() {
-        this(false);
-    }
-
-    public EventBus(boolean async) {
-        this.executorMap = async ? new ConcurrentHashMap<>() : new HashMap<>();
-    }
+    private final Map<Class<?>, List<EventExecutor>> executorMap = new HashMap<>();
+    private final Map<Object, List<EventExecutor>> handlerPosts = new HashMap<>();
 
     public void register(Object handler) {
         for (Method method : handler.getClass().getDeclaredMethods()) {
-            if (method.getAnnotation(Subscriber.class) == null) continue;
+            Subscriber subscriber = method.getAnnotation(Subscriber.class);
+            if (subscriber == null) continue;
             if (method.getParameterCount() != 1) continue;
             Class<?> eventClass = method.getParameterTypes()[0];
             
             EventPost post = this.postGenerator.generate(handler, method, eventClass);
-            this.executorMap.computeIfAbsent(eventClass, clazz -> new ArrayList<>()).add(post);
-            this.handlerPosts.computeIfAbsent(handler, h -> new ArrayList<>()).add(post);
+            EventExecutor executor = new EventExecutor(subscriber.priority(), post);
+            this.executorMap.computeIfAbsent(eventClass, clazz -> Collections.synchronizedList(new ArrayList<>())).add(executor);
+            this.handlerPosts.computeIfAbsent(handler, h -> new ArrayList<>()).add(executor);
+        }
+
+        Comparator<EventExecutor> comparator = Comparator.comparingInt(value -> value.getPriority().ordinal());
+        comparator = comparator.reversed();
+
+        for (List<EventExecutor> list : this.executorMap.values()) {
+            list.sort(comparator);
         }
     }
 
     public void unregister(Object handler) {
-        List<EventPost> posts = this.handlerPosts.remove(handler);
+        List<EventExecutor> posts = this.handlerPosts.remove(handler);
         if (posts == null) return;
-        for (List<EventPost> value : this.executorMap.values()) {
+        for (List<EventExecutor> value : this.executorMap.values()) {
             value.removeAll(posts);
         }
     }
 
     public void post(Object event) {
-        List<EventPost> posts = this.executorMap.get(event.getClass());
+        List<EventExecutor> posts = this.executorMap.get(event.getClass());
         if (posts == null) return;
-        for (EventPost post : posts) {
-            post.post(event);
+        for (EventExecutor post : posts) {
+            post.execute(event);
         }
     }
 }
