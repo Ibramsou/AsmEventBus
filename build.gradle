@@ -1,0 +1,18 @@
+plugins {
+    id 'java'
+}
+
+group 'fr.bramsou.asm-event-bus'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.ow2.asm:asm:9.2'
+}
+
+test {
+    useJUnitPlatform()
+}
