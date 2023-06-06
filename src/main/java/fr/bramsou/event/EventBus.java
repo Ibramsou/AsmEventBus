@@ -9,6 +9,10 @@ public class EventBus {
     private final Map<Class<?>, List<EventExecutor>> executorMap = new HashMap<>();
     private final Map<Object, List<EventExecutor>> handlerPosts = new HashMap<>();
 
+    /**
+     * Register a new event listener handler
+     * @param handler the handler
+     */
     public void register(Object handler) {
         for (Method method : handler.getClass().getDeclaredMethods()) {
             Subscriber subscriber = method.getAnnotation(Subscriber.class);
@@ -30,6 +34,10 @@ public class EventBus {
         }
     }
 
+    /**
+     * Unregister an handler
+     * @param handler the handler
+     */
     public void unregister(Object handler) {
         List<EventExecutor> posts = this.handlerPosts.remove(handler);
         if (posts == null) return;
@@ -38,6 +46,10 @@ public class EventBus {
         }
     }
 
+    /**
+     * Post an event
+     * @param event event object
+     */
     public void post(Object event) {
         List<EventExecutor> posts = this.executorMap.get(event.getClass());
         if (posts == null) return;
